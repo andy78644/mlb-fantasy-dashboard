@@ -9,19 +9,18 @@ import {
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import LeaguePage from './pages/LeaguePage';
-import CallbackHandler from './components/CallbackHandler'; // Handles the OAuth callback
 import AuthProvider, { useAuth } from './context/AuthContext'; // Auth context
 import './App.css';
 
 // A wrapper for routes that require authentication
 function PrivateRoute({ children }) {
-  const { user, loading } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return <div>Loading authentication status...</div>; // Or a spinner
   }
 
-  return user ? children : <Navigate to="/login" replace />;
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
 }
 
 function App() {
@@ -29,16 +28,9 @@ function App() {
     <AuthProvider>
       <Router>
         <div className="App">
-          <nav>
-            <ul>
-              <li><Link to="/">Home</Link></li>
-              {/* Add other nav links as needed */}
-            </ul>
-          </nav>
+          <Nav /> 
           <Routes>
             <Route path="/login" element={<LoginPage />} />
-            {/* Route to handle the OAuth callback */}
-            <Route path="/auth/callback" element={<CallbackHandler />} />
 
             {/* Protected Routes */}
             <Route 
@@ -58,7 +50,7 @@ function App() {
               }
             />
 
-            {/* Default route - redirect to dashboard if logged in, else to login */}
+            {/* Default route - redirect based on auth status */}
             <Route 
               path="/" 
               element={
@@ -66,8 +58,8 @@ function App() {
               }
             />
 
-            {/* Add other routes here */}
-            <Route path="*" element={<Navigate to="/" replace />} />{/* Catch-all redirects to home */}
+            {/* Catch-all redirects to home */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </Router>
@@ -75,15 +67,31 @@ function App() {
   );
 }
 
+// Navigation Component (Example)
+function Nav() {
+  const { isAuthenticated, logout } = useAuth();
+
+  return (
+    <nav>
+      <ul>
+        <li><Link to="/">Home</Link></li>
+        {isAuthenticated && <li><Link to="/dashboard">Dashboard</Link></li>}
+        {/* Add other nav links */} 
+        {isAuthenticated && <li><button onClick={logout}>Logout</button></li>}
+      </ul>
+    </nav>
+  );
+}
+
 // Helper component to redirect based on auth status
 function AuthRedirector() {
-  const { user, loading } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
-  return user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
 }
 
 export default App;

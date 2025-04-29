@@ -1,20 +1,16 @@
 const express = require('express');
-const connectDB = require('./config/db');
+// const connectDB = require('./config/db');
 const dotenv = require('dotenv');
 const session = require('express-session');
-const MongoStore = require('connect-mongo');
-const passport = require('passport');
+// const MongoStore = require('connect-mongo');
 const path = require('path'); // Needed for serving static files
 const cors = require('cors'); // Import the cors middleware
 
 // Load env vars
 dotenv.config();
 
-// Passport config
-require('./config/passport')(passport); // Pass passport for configuration
-
 // Connect to database
-connectDB();
+// connectDB();
 
 const app = express();
 
@@ -34,7 +30,8 @@ app.use(
     secret: process.env.SESSION_SECRET || 'keyboard cat', // Use an environment variable for secret
     resave: false,
     saveUninitialized: false, // Don't create session until something stored
-    store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
+    // Using memory store instead of MongoDB
+    // Note: Memory store is not suitable for production as sessions are lost on server restart
     cookie: {
         // secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
         maxAge: 1000 * 60 * 60 * 24 * 7 // Session expires in 7 days
@@ -42,15 +39,23 @@ app.use(
   })
 );
 
-// Passport middleware
-app.use(passport.initialize());
-app.use(passport.session());
-
 // Define Routes
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/leagues', require('./routes/leagues'));
-app.use('/api/teams', require('./routes/teams'));
-app.use('/api/reports', require('./routes/reports'));
+
+// Add debug middleware for leagues route
+app.use('/api/leagues', (req, res, next) => {
+  console.log('DEBUG: Leagues route accessed:', {
+    method: req.method,
+    path: req.path,
+    hasSession: !!req.session,
+    hasYahooTokens: !!(req.session && req.session.yahooTokens),
+  });
+  next();
+});
+
+app.use('/api/leagues', require('./routes/leagues')); // Re-enabled leagues route
+app.use('/api/teams', require('./routes/teams')); // Re-enabled teams route
+// app.use('/api/reports', require('./routes/reports'));
 
 // Serve static assets in production
 if (process.env.NODE_ENV === 'production') {

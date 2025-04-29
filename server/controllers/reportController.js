@@ -6,11 +6,14 @@ const { calculateAndStorePowerIndex } = require('../utils/calculations'); // To 
 // Generate and send a weekly report
 exports.generateWeeklyReport = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const accessToken = req.accessToken; // Get token from middleware
     const { leagueId } = req.params; // DB League ID
     const week = parseInt(req.query.week);
     const year = parseInt(req.query.year);
 
+    if (!accessToken) {
+        return res.status(401).json({ message: 'Access token not available.' });
+    }
     if (!week || !year) {
       return res.status(400).json({ message: 'Week and Year query parameters are required' });
     }
@@ -27,9 +30,10 @@ exports.generateWeeklyReport = async (req, res) => {
     // If no data found, try calculating it first
     if (!weeklyStatsData || weeklyStatsData.length === 0) {
         console.log(`No pre-calculated stats found for report (League ${leagueId}, Week ${week}, Year ${year}). Triggering calculation.`);
-        weeklyStatsData = await calculateAndStorePowerIndex(userId, leagueId, week, year);
-        // Re-sort after calculation
-        weeklyStatsData.sort((a, b) => b.powerIndex - a.powerIndex);
+        // Pass accessToken to the calculation function
+        weeklyStatsData = await calculateAndStorePowerIndex(accessToken, leagueId, week, year);
+        // Re-sort after calculation (calculateAndStorePowerIndex now sorts internally)
+        // weeklyStatsData.sort((a, b) => b.powerIndex - a.powerIndex);
     }
 
     if (!weeklyStatsData || weeklyStatsData.length === 0) {
@@ -51,19 +55,27 @@ exports.generateWeeklyReport = async (req, res) => {
         { header: 'Rank', key: 'rank', width: 8 },
         { header: 'Team Name', key: 'teamName', width: 30 },
         { header: 'Manager', key: 'managerName', width: 25 },
-        { header: 'Power Index', key: 'powerIndex', width: 15 },
-        // Add columns for individual stats dynamically based on available data
+        { header: 'Power Index', key: 'powerIndex', width: 15, numFmt: '0.00' }, // Added number format
     ];
 
     // Dynamically add stat columns based on the first team's stats
     const firstTeamStats = weeklyStatsData[0].stats;
     const statHeaders = {}; // To store statId -> header mapping (if available)
+    // TODO: Fetch stat metadata (names/abbreviations) from Yahoo API
+    // For now, use stat IDs as headers
+    const statMetadata = {}; // Placeholder for fetched stat names
+
     if (firstTeamStats) {
-        Object.keys(firstTeamStats).forEach(statId => {
-            // TODO: Replace statId with actual stat name/abbreviation if fetched/stored
-            const headerName = `Stat_${statId}`; 
+        Object.keys(firstTeamStats).sort().forEach(statId => {
+            const headerName = statMetadata[statId]?.name || `Stat_${statId}`; // Use fetched name or fallback
             statHeaders[statId] = headerName;
-            columns.push({ header: headerName, key: `stat_${statId}`, width: 12 });
+            columns.push({ 
+                header: headerName, 
+                key: `stat_${statId}`, 
+                width: 12, 
+                // Apply number format if the value is numeric
+                numFmt: typeof firstTeamStats[statId] === 'number' ? '0.00' : undefined 
+            });
         });
     }
     worksheet.columns = columns;
@@ -75,6 +87,7 @@ exports.generateWeeklyReport = async (req, res) => {
     worksheet.getCell('A1').alignment = { horizontal: 'center' };
     worksheet.getRow(2).values = columns.map(col => col.header);
     worksheet.getRow(2).font = { bold: true };
+    worksheet.getRow(2).alignment = { horizontal: 'center' };
 
     // --- Populate Rows --- 
     weeklyStatsData.forEach((data, index) => {
@@ -90,7 +103,10 @@ exports.generateWeeklyReport = async (req, res) => {
                 rowData[`stat_${statId}`] = data.stats[statId] !== undefined ? data.stats[statId] : '-';
             });
         }
-        worksheet.addRow(rowData);
+        const row = worksheet.addRow(rowData);
+        // Center align rank and power index
+        row.getCell('rank').alignment = { horizontal: 'center' };
+        row.getCell('powerIndex').alignment = { horizontal: 'center' };
     });
 
     // --- Style and Formatting (Optional) ---
@@ -133,7 +149,8 @@ exports.generateWeeklyReport = async (req, res) => {
     console.error('Error generating weekly report:', err.message);
     // Ensure headers aren't already sent before sending error response
     if (!res.headersSent) {
-        if (err.message.includes('Failed to refresh Yahoo token') || (err.response && err.response.status === 401)) {
+        // Check for token errors propagated from calculations
+        if (err.isTokenExpired || err.message.includes('401') || (err.response && err.response.status === 401)) {
             return res.status(401).json({ message: 'Authentication error with Yahoo. Please login again.' });
         }
         res.status(500).send('Server Error generating report');
