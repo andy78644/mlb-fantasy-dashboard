@@ -38,6 +38,7 @@ apiService.yahoo = {
     return apiService.get(`/api/teams/${teamKey}/roster${weekParam}`);
   },
   getTeamWeeklyStats: (teamKey, week) => apiService.get(`/api/teams/${teamKey}/stats?week=${week}`),
+  getTeamMatchup: (teamKey, week) => apiService.get(`/api/teams/${teamKey}/matchups?week=${week}`),
   
   // League data
   getScoreboard: (leagueKey, week) => apiService.get(`/api/leagues/${leagueKey}/scoreboard?week=${week}`),

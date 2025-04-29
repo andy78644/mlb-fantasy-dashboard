@@ -167,9 +167,15 @@ router.get('/:leagueId/transactions', ensureAuth, async (req, res) => {
 // @access  Private
 // router.get('/:leagueId/sync', ensureAuth, leagueController.syncLeagueData); // Commented out - syncLeagueData not defined in controller
 
+// Add this logging middleware specifically for the powerindex route
+router.use('/:leagueId/powerindex', (req, res, next) => {
+  console.log(`DEBUG: Request received for /api/leagues/${req.params.leagueId}/powerindex with query:`, req.query);
+  next();
+});
+
 // @route   GET /api/leagues/:leagueId/powerindex
 // @desc    Get weekly power index for a specific league
 // @access  Private
-// router.get('/:leagueId/powerindex', ensureAuth, leagueController.getLeaguePowerIndex); // Commented out - getLeaguePowerIndex not defined in controller
+router.get('/:leagueId/powerindex', ensureAuth, leagueController.getLeaguePowerIndex);
 
 module.exports = router;

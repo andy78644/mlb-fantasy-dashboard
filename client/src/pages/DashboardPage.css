@@ -1,0 +1,248 @@
+/* DashboardPage.css - Modern Dashboard Styling */
+
+.dashboard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+  color: #333;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dashboard header styling */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #1a237e, #283593);
+  color: white;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.welcome-user h1 {
+  margin: 0 0 10px 0;
+  font-size: 2rem;
+}
+
+.welcome-user p {
+  margin: 0;
+  opacity: 0.8;
+}
+
+.logout-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.logout-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Dashboard info box */
+.dashboard-info {
+  margin-bottom: 20px;
+}
+
+.info-box {
+  background-color: #e8eaf6;
+  border-left: 4px solid #1a237e;
+  padding: 15px;
+  border-radius: 4px;
+}
+
+.info-box h3 {
+  margin-top: 0;
+  color: #1a237e;
+}
+
+.info-box p {
+  margin-bottom: 0;
+  color: #555;
+}
+
+/* Leagues section */
+.leagues-section {
+  margin-bottom: 20px;
+  flex: 1;
+}
+
+.leagues-section h2 {
+  color: #1a237e;
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 10px;
+}
+
+.leagues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.league-card {
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid #eee;
+}
+
+.league-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.league-card-content {
+  padding: 20px;
+}
+
+.league-card h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #1a237e;
+  font-size: 1.2rem;
+}
+
+.league-meta-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.season-tag, .league-type, .scoring-type {
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background-color: #f0f0f0;
+  color: #555;
+}
+
+.season-tag {
+  background-color: #e8eaf6;
+  color: #1a237e;
+}
+
+.league-details {
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+}
+
+.league-details p {
+  margin: 5px 0;
+}
+
+.view-league-btn {
+  display: inline-block;
+  background-color: #1a237e;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.view-league-btn:hover {
+  background-color: #283593;
+  text-decoration: none;
+  color: white;
+}
+
+/* Loading state */
+.dashboard-loading,
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+}
+
+.loading-spinner {
+  border: 3px solid #f3f3f3;
+  border-radius: 50%;
+  border-top: 3px solid #1a237e;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Error state */
+.error-message {
+  background-color: #ffebee;
+  color: #d32f2f;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+}
+
+/* No leagues state */
+.no-leagues {
+  background-color: white;
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.no-leagues p:first-child {
+  font-weight: bold;
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+  color: #1a237e;
+}
+
+.no-leagues p:last-child {
+  color: #666;
+  margin-bottom: 0;
+}
+
+/* Footer */
+.dashboard-footer {
+  margin-top: auto;
+  text-align: center;
+  padding: 20px 0;
+  color: #666;
+  font-size: 0.9rem;
+  border-top: 1px solid #eee;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .logout-btn {
+    margin-top: 15px;
+  }
+
+  .leagues-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+}

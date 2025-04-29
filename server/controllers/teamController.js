@@ -4,6 +4,122 @@ const User = require('../models/User');
 const WeeklyStats = require('../models/WeeklyStats');
 const yahooApiService = require('../utils/yahooApiService'); // Import the new service
 
+// Get the logged-in user's team for a specific league
+exports.getMyTeamInLeague = async (req, res) => {
+    try {
+        const userId = req.user?.id; // Assuming auth middleware attaches user with DB id
+        const { leagueId } = req.params; // DB League ID
+
+        if (!userId) {
+            return res.status(401).json({ message: 'User not authenticated.' });
+        }
+
+        const team = await Team.findOne({ league: leagueId, user: userId })
+                               .select('name yahooTeamId yahooTeamKey teamLogoUrl managerName'); // Select specific fields
+
+        if (!team) {
+            // Attempt to find any team associated with the user in case the user link is missing but they are a manager
+            const league = await League.findById(leagueId).populate({
+                path: 'teams',
+                match: { user: userId } // Try matching user ID first
+            });
+
+            if (league && league.teams && league.teams.length > 0) {
+                 // Found a team linked via user ID
+                 const userTeam = league.teams[0];
+                 return res.json({
+                    _id: userTeam._id,
+                    yahooTeamId: userTeam.yahooTeamId,
+                    yahooTeamKey: userTeam.yahooTeamKey,
+                    name: userTeam.name,
+                    teamLogoUrl: userTeam.teamLogoUrl,
+                    managerName: userTeam.managerName,
+                 });
+            } else {
+                // Fallback: If no team is directly linked via user ID, check manager GUID if available
+                // This requires fetching all teams and comparing manager GUID, which might be less efficient
+                // For simplicity, we'll rely on the user link for now.
+                // Consider adding logic here to fetch all league teams and match req.user.yahooId if needed.
+                 console.warn(`No team found directly linked to user ${userId} in league ${leagueId}.`);
+                 // Let's try fetching all teams and matching the yahooId from the token if available
+                 if (req.user.yahooId) {
+                    const allTeams = await Team.find({ league: leagueId });
+                    const userYahooId = req.user.yahooId;
+                    // This requires fetching manager details from Yahoo API for each team, which is inefficient here.
+                    // A better approach is to ensure the User model is linked during getLeagueTeams.
+                    // For now, return 404 if direct link fails.
+                 }
+
+                return res.status(404).json({ message: 'Team for the current user not found in this league.' });
+            }
+        }
+
+        res.json({
+            _id: team._id,
+            yahooTeamId: team.yahooTeamId,
+            yahooTeamKey: team.yahooTeamKey,
+            name: team.name,
+            teamLogoUrl: team.teamLogoUrl,
+            managerName: team.managerName,
+        });
+
+    } catch (err) {
+        console.error('Error in getMyTeamInLeague:', err.message, err.stack);
+        res.status(500).send('Server Error');
+    }
+};
+
+
+// Get team roster
+exports.getTeamRoster = async (req, res) => {
+    try {
+        const accessToken = req.accessToken;
+        const { yahooTeamKey } = req.params;
+        const week = req.query.week; // Optional week query param
+
+        if (!accessToken) {
+            return res.status(401).json({ message: 'Access token not available.' });
+        }
+        if (!yahooTeamKey) {
+            return res.status(400).json({ message: 'Yahoo Team Key parameter is required.' });
+        }
+
+        // Fetch roster from Yahoo API
+        const apiUrl = yahooApiService.roster(yahooTeamKey, week); // Pass week if provided
+        const yahooData = await yahooApiService.makeAPIrequest(apiUrl, accessToken);
+
+        // Process the response (structure depends on xml2json-light)
+        const fantasyContent = yahooData.fantasy_content;
+        const rosterData = fantasyContent?.team?.roster?.players?.player; // Adjust path as needed
+
+        let processedRoster = [];
+        if (rosterData) {
+            const playersArray = Array.isArray(rosterData) ? rosterData : [rosterData];
+            processedRoster = playersArray.map(player => ({
+                player_key: player.player_key,
+                player_id: player.player_id,
+                name: player.name?.full,
+                editorial_team_abbr: player.editorial_team_abbr,
+                display_position: player.display_position,
+                position_type: player.position_type, // e.g., 'B', 'P'
+                selected_position: player.selected_position?.position, // e.g., '1B', 'SP', 'BN'
+                status: player.status, // e.g., '', 'DL'
+                headshot: player.headshot?.url,
+                // Add more fields as needed
+            }));
+        }
+
+        res.json(processedRoster);
+
+    } catch (err) {
+        console.error('Error in getTeamRoster:', err.message, err.stack);
+        if (err.isTokenExpired || err.message.includes('401') || (err.response && err.response.status === 401)) {
+            return res.status(401).json({ message: 'Authentication error with Yahoo. Please login again.' });
+        }
+        res.status(500).send('Server Error');
+    }
+};
+
 // Get all teams for a specific league from Yahoo and DB
 exports.getLeagueTeams = async (req, res) => {
   try {

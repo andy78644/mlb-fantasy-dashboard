@@ -1,6 +1,6 @@
 const axios = require('axios');
 const qs = require('qs');
-const xml2json = require('xml2json-light'); // Import the function directly
+const xml2jsonLight = require('xml2json-light'); // Import the module
 
 const AUTH_ENDPOINT = 'https://api.login.yahoo.com/oauth2/get_token';
 // Ensure these are set in your .env file
@@ -82,9 +82,9 @@ const yahooApiService = {
         method: 'get',
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/xml', // Yahoo API often expects/returns XML
+          'Content-Type': 'application/xml',
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.109 Safari/537.36',
-          'Accept': 'application/json' // Request JSON if possible, otherwise parse XML
+          'Accept': 'application/json'
         },
       });
 
@@ -97,7 +97,7 @@ const yahooApiService = {
         console.log('API request successful (XML response), parsing to JSON'); // Debug log
         // Correct usage: call the imported function directly
         console.log('DEBUG: Parsing XML response to JSON: ', response.data); // Debug log
-        const jsonData = xml2json(response.data, { object: true });
+        const jsonData = xml2jsonLight.xml2json(response.data, { object: true });
         return jsonData;
       } else {
           // Handle unexpected content type or assume JSON if unsure
@@ -151,6 +151,10 @@ const yahooApiService = {
 
   scoreboard(leagueKey, week) {
     return `${this.YAHOO_BASE_URL}/league/${leagueKey}/scoreboard;week=${week}`;
+  },
+
+  matchup(teamKey, week) {
+    return `${this.YAHOO_BASE_URL}/team/${teamKey}/matchups;weeks=${week}`;
   },
 
   playerStats(playerKeys) { // playerKeys should be a comma-separated string

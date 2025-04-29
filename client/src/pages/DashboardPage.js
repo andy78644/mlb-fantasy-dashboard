@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import './DashboardPage.css';
 
 function DashboardPage() {
   const { user, logout } = useAuth();
@@ -14,22 +15,6 @@ function DashboardPage() {
       setLoading(true);
       setError(null);
       try {
-        // Try the test endpoint first to confirm route is working
-        try {
-          const testResponse = await axios.get('http://localhost:5001/api/leagues/test', {
-            withCredentials: true
-          });
-          console.log('Test endpoint response:', testResponse.data);
-        } catch (testErr) {
-          console.warn('Test endpoint failed:', testErr.message);
-        }
-
-        // Use the public endpoint that doesn't require authentication
-        const response = await axios.get('http://localhost:5001/api/leagues/public', {
-          withCredentials: true
-        });
-        setLeagues(response.data || []);
-        
         // Only try the authenticated endpoint if we have a user
         if (user) {
           try {
@@ -37,13 +22,23 @@ function DashboardPage() {
             const authResponse = await axios.get('http://localhost:5001/api/leagues', {
               withCredentials: true
             });
-            // If successful, override with the real data
+            // If successful, use the real data
             if (authResponse.data && authResponse.data.length > 0) {
               setLeagues(authResponse.data);
+            } else {
+              // Fallback to public data if no leagues found
+              const response = await axios.get('http://localhost:5001/api/leagues/public', {
+                withCredentials: true
+              });
+              setLeagues(response.data || []);
             }
           } catch (authErr) {
             console.warn('Authenticated endpoint failed:', authErr.message);
-            // Continue using the public data, no need to show error
+            // Try the public endpoint as fallback
+            const response = await axios.get('http://localhost:5001/api/leagues/public', {
+              withCredentials: true
+            });
+            setLeagues(response.data || []);
           }
         }
       } catch (err) {
@@ -62,40 +57,76 @@ function DashboardPage() {
 
   if (!user) {
     return (
-      <div className="loading-container">
+      <div className="dashboard-loading">
+        <div className="loading-spinner"></div>
         <p>Please log in to view your dashboard...</p>
       </div>
     );
   }
 
   return (
-    <div>
-      <h1>Dashboard</h1>
-      {user && <p>Welcome, {user.displayName || 'Yahoo Fantasy User'}!</p>}
-      <div style={{ color: 'blue', padding: '10px', margin: '10px 0', backgroundColor: '#f0f8ff', borderRadius: '4px' }}>
-        <p><strong>Note:</strong> Fetching real league data from Yahoo Fantasy API.</p>
+    <div className="dashboard-container">
+      <div className="dashboard-header">
+        <div className="welcome-user">
+          <h1>Fantasy Baseball Dashboard</h1>
+          <p>Welcome, {user.displayName || 'Yahoo Fantasy User'}!</p>
+        </div>
+        <button className="logout-btn" onClick={logout}>Logout</button>
       </div>
-      <button onClick={logout}>Logout</button>
 
-      <h2>Your Leagues</h2>
-      {loading && <p>Loading leagues...</p>}
-      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-      {!loading && !error && leagues.length === 0 && <p>No leagues found.</p>}
-      {!loading && !error && leagues.length > 0 && (
-        <ul>
-          {leagues.map(league => (
-            <li key={league._id}>
-              <Link to={`/league/${league._id}`}>
-                {league.name} ({league.season})
-              </Link>
-              <div style={{ fontSize: '0.85em', marginLeft: '1em', color: '#666' }}>
-                {league.leagueType} league | {league.scoringType} scoring | Teams: {league.numTeams}
-                {league.currentWeek && <span> | Current Week: {league.currentWeek}</span>}
+      <div className="dashboard-info">
+        <div className="info-box">
+          <h3>MLB Fantasy Dashboard</h3>
+          <p>Access your Yahoo fantasy baseball leagues, view team rosters, weekly matchups, and power rankings all in one place.</p>
+        </div>
+      </div>
+
+      <div className="leagues-section">
+        <h2>Your Leagues</h2>
+        {loading && (
+          <div className="loading-container">
+            <div className="loading-spinner"></div>
+            <p>Loading leagues...</p>
+          </div>
+        )}
+        
+        {error && <div className="error-message">Error: {error}</div>}
+        
+        {!loading && !error && leagues.length === 0 && (
+          <div className="no-leagues">
+            <p>No leagues found.</p>
+            <p>You don't appear to be a member of any MLB Fantasy leagues.</p>
+          </div>
+        )}
+        
+        {!loading && !error && leagues.length > 0 && (
+          <div className="leagues-grid">
+            {leagues.map(league => (
+              <div key={league._id} className="league-card">
+                <div className="league-card-content">
+                  <h3>{league.name}</h3>
+                  <div className="league-meta-info">
+                    <span className="season-tag">Season {league.season}</span>
+                    <span className="league-type">{league.leagueType} league</span>
+                    <span className="scoring-type">{league.scoringType} scoring</span>
+                  </div>
+                  <div className="league-details">
+                    <p><strong>Teams:</strong> {league.numTeams}</p>
+                    {league.currentWeek && <p><strong>Current Week:</strong> {league.currentWeek}</p>}
+                  </div>
+                  <Link to={`/league/${league._id}`} className="view-league-btn">
+                    View League
+                  </Link>
+                </div>
               </div>
-            </li>
-          ))}
-        </ul>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
+      
+      <footer className="dashboard-footer">
+        <p>MLB Fantasy Dashboard ©2025</p>
+      </footer>
     </div>
   );
 }
