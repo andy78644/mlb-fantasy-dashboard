@@ -10,6 +10,7 @@ const yahooApiService = require('../utils/yahooApiService'); // Import yahooApiS
 router.get('/:teamKey/roster', ensureAuth, async (req, res) => {
   try {
     const accessToken = req.accessToken;
+    const refreshToken = req.session?.yahooTokens?.refreshToken;
     const { teamKey } = req.params;
     const { week } = req.query;
 
@@ -18,7 +19,7 @@ router.get('/:teamKey/roster', ensureAuth, async (req, res) => {
     }
 
     const apiUrl = yahooApiService.roster(teamKey, week);
-    const data = await yahooApiService.makeAPIrequest(apiUrl, accessToken);
+    const data = await yahooApiService.makeAPIrequestWithTokenRefresh(apiUrl, accessToken, refreshToken);
     res.json(data);
   } catch (err) {
     console.error('Error fetching team roster:', err.message);
@@ -35,6 +36,7 @@ router.get('/:teamKey/roster', ensureAuth, async (req, res) => {
 router.get('/:teamKey/matchups', ensureAuth, async (req, res) => {
   try {
     const accessToken = req.accessToken;
+    const refreshToken = req.session?.yahooTokens?.refreshToken;
     const { teamKey } = req.params;
     const { week } = req.query;
 
@@ -47,7 +49,8 @@ router.get('/:teamKey/matchups', ensureAuth, async (req, res) => {
     }
 
     const apiUrl = yahooApiService.matchup(teamKey, week);
-    const data = await yahooApiService.makeAPIrequest(apiUrl, accessToken);
+    // Use the improved function with automatic token refresh
+    const data = await yahooApiService.makeAPIrequestWithTokenRefresh(apiUrl, accessToken, refreshToken);
     
     // Process the data to make it easier to work with on the frontend
     // Extract the matchup data from the Yahoo API response
@@ -124,6 +127,7 @@ function processTeamStats(statsArray) {
 router.get('/:teamKey/stats', ensureAuth, async (req, res) => {
   try {
     const accessToken = req.accessToken;
+    const refreshToken = req.session?.yahooTokens?.refreshToken;
     const { teamKey } = req.params;
     const { week } = req.query;
 
@@ -136,7 +140,7 @@ router.get('/:teamKey/stats', ensureAuth, async (req, res) => {
     }
 
     const apiUrl = yahooApiService.myWeeklyStats(teamKey, week);
-    const data = await yahooApiService.makeAPIrequest(apiUrl, accessToken);
+    const data = await yahooApiService.makeAPIrequestWithTokenRefresh(apiUrl, accessToken, refreshToken);
     res.json(data);
   } catch (err) {
     console.error('Error fetching team stats:', err.message);

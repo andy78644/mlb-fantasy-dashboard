@@ -27,58 +27,77 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="App">
-          <Nav /> 
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
+        <div className="app-container">
+          <ModernNav /> 
+          <div className="content-container">
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
 
-            {/* Protected Routes */}
-            <Route 
-              path="/dashboard" 
-              element={
-                <PrivateRoute>
-                  <DashboardPage />
-                </PrivateRoute>
-              }
-            />
-            <Route 
-              path="/league/:leagueId" 
-              element={
-                <PrivateRoute>
-                  <LeaguePage />
-                </PrivateRoute>
-              }
-            />
+              {/* Protected Routes */}
+              <Route 
+                path="/dashboard" 
+                element={
+                  <PrivateRoute>
+                    <DashboardPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route 
+                path="/league/:leagueId" 
+                element={
+                  <PrivateRoute>
+                    <LeaguePage />
+                  </PrivateRoute>
+                }
+              />
 
-            {/* Default route - redirect based on auth status */}
-            <Route 
-              path="/" 
-              element={
-                <AuthRedirector />
-              }
-            />
+              {/* Default route - redirect based on auth status */}
+              <Route 
+                path="/" 
+                element={
+                  <AuthRedirector />
+                }
+              />
 
-            {/* Catch-all redirects to home */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              {/* Catch-all redirects to home */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
         </div>
       </Router>
     </AuthProvider>
   );
 }
 
-// Navigation Component (Example)
-function Nav() {
+// Modern Navigation Component
+function ModernNav() {
   const { isAuthenticated, logout } = useAuth();
 
   return (
-    <nav>
-      <ul>
-        <li><Link to="/">Home</Link></li>
-        {isAuthenticated && <li><Link to="/dashboard">Dashboard</Link></li>}
-        {/* Add other nav links */} 
-        {isAuthenticated && <li><button onClick={logout}>Logout</button></li>}
-      </ul>
+    <nav className="modern-nav">
+      <div className="nav-content">
+        <div className="nav-logo-section">
+          <img 
+            src="https://images.seeklogo.com/logo-png/25/1/mlb-logo-png_seeklogo-250501.png" 
+            alt="MLB Logo" 
+            className="nav-logo" 
+          />
+          <h1 className="nav-title">Fantasy Baseball Dashboard</h1>
+        </div>
+
+        <ul className="nav-links">
+          {isAuthenticated && (
+            <>
+              <li><Link to="/dashboard" className="nav-link">Dashboard</Link></li>
+              <li><Link to="/" className="nav-link">My Leagues</Link></li>
+              <li><button onClick={logout} className="nav-logout-button">Logout</button></li>
+            </>
+          )}
+          {!isAuthenticated && (
+            <li><Link to="/login" className="nav-link">Login</Link></li>
+          )}
+        </ul>
+      </div>
     </nav>
   );
 }

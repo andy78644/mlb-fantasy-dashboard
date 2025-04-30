@@ -71,11 +71,18 @@ const yahooApiService = {
 
   // Make a request to the Yahoo Fantasy API
   async makeAPIrequest(url, accessToken) {
+    // Validate parameters to prevent infinite recursion
+    if (!url || typeof url !== 'string') {
+      console.error('Invalid URL provided for API request');
+      throw new Error('Valid URL is required for API request');
+    }
+    
     console.log(`Making API request to: ${url} with token: ${accessToken ? 'provided' : 'missing'}`); // Debug log
     if (!accessToken) {
         console.error('Access token is missing for API request.');
         throw new Error('Access token required for API request.');
     }
+    
     try {
       const response = await axios({
         url,
@@ -96,26 +103,94 @@ const yahooApiService = {
       } else if (contentType && contentType.includes('application/xml')) {
         console.log('API request successful (XML response), parsing to JSON'); // Debug log
         // Correct usage: call the imported function directly
-        console.log('DEBUG: Parsing XML response to JSON: ', response.data); // Debug log
-        const jsonData = xml2jsonLight.xml2json(response.data, { object: true });
-        return jsonData;
+        try {
+          const jsonData = xml2jsonLight.xml2json(response.data, { object: true });
+          return jsonData;
+        } catch (parseError) {
+          console.error('Error parsing XML to JSON:', parseError);
+          throw new Error(`Failed to parse XML response: ${parseError.message}`);
+        }
       } else {
           // Handle unexpected content type or assume JSON if unsure
           console.warn(`Unexpected content type: ${contentType}. Attempting to parse as JSON.`);
           return response.data;
       }
     } catch (err) {
-      console.error(`Error in makeAPIrequest() to ${url}: Status=${err.response?.status}`, err.response?.data || err.message);
+      // Safely access error properties to avoid undefined errors causing stack overflow
+      const status = err.response?.status;
+      const errorData = err.response?.data || {};
+      const errorDescription = errorData.error?.description || err.message;
+      
+      console.error(`Error in makeAPIrequest() to ${url}: Status=${status} ${errorDescription}`);
+      
       // Check specifically for token expired error to allow refresh logic upstream
-      if (err.response?.data?.error?.description?.includes('token_expired')) {
+      if (errorData.error?.description?.includes('token_expired')) {
           console.log('Token expired error detected.'); // Debug log
           // Throw a specific error type or flag for the caller to handle refresh
           const tokenExpiredError = new Error('Token expired');
           tokenExpiredError.isTokenExpired = true;
           throw tokenExpiredError;
       }
+      
       // Throw a generic error for other issues
-      throw new Error(`API request failed: ${err.response?.data?.error?.description || err.message}`);
+      throw new Error(`API request failed: ${errorDescription}`);
+    }
+  },
+
+  // Utility function for making API requests with automatic token refresh
+  async makeAPIrequestWithTokenRefresh(url, accessToken, refreshToken, retryCount = 0) {
+    // Validate input parameters
+    if (!url || typeof url !== 'string') {
+      console.error('Invalid URL provided for API request with token refresh');
+      throw new Error('Valid URL is required for API request with token refresh');
+    }
+    
+    if (!accessToken) {
+      console.error('Access token is missing for API request with token refresh');
+      throw new Error('Access token required for API request with token refresh');
+    }
+    
+    // Maximum retry attempts to prevent infinite recursion
+    const MAX_RETRIES = 2;
+    if (retryCount > MAX_RETRIES) {
+      console.error(`Exceeded maximum retry attempts (${MAX_RETRIES}) for API request`);
+      throw new Error(`Failed to complete API request after ${MAX_RETRIES} refresh attempts`);
+    }
+    
+    try {
+      // Attempt the API request with current access token
+      return await this.makeAPIrequest(url, accessToken);
+    } catch (error) {
+      // If token expired and we haven't exceeded retry attempts
+      if (error.isTokenExpired && refreshToken) {
+        console.log(`Token expired, attempting refresh (attempt ${retryCount + 1})`);
+        try {
+          // Get new tokens
+          const tokenData = await this.refreshAuthorizationToken(refreshToken);
+          
+          // Check if we got valid token data
+          if (!tokenData || !tokenData.access_token) {
+            throw new Error('Token refresh did not return valid credentials');
+          }
+          
+          // Save new refresh token or reuse current if not returned
+          const newRefreshToken = tokenData.refresh_token || refreshToken;
+          
+          // Retry with new access token (increment retry count)
+          return await this.makeAPIrequestWithTokenRefresh(
+            url, 
+            tokenData.access_token,
+            newRefreshToken,
+            retryCount + 1
+          );
+        } catch (refreshError) {
+          console.error('Token refresh failed:', refreshError.message);
+          throw new Error(`Failed to refresh token: ${refreshError.message}`);
+        }
+      } 
+      
+      // Re-throw original error if it's not a token issue or we've exceeded retries
+      throw error;
     }
   },
 

@@ -1,0 +1,143 @@
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.login-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.login-logo {
+  width: 180px;
+  margin-bottom: 1.5rem;
+}
+
+.login-title {
+  color: #002D72; /* MLB blue */
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.login-subtitle {
+  color: #555;
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #d32f2f;
+  padding: 1rem;
+  border-radius: 5px;
+  width: 100%;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.login-instructions {
+  background-color: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  width: 100%;
+}
+
+.login-instructions h3 {
+  color: #002D72;
+  margin-bottom: 1rem;
+}
+
+.login-instruction-steps {
+  margin-left: 1.5rem;
+}
+
+.login-instruction-steps li {
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+.auth-link {
+  font-weight: 600;
+  color: #002D72;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.auth-link:hover {
+  color: #E31937; /* MLB red */
+  text-decoration: underline;
+}
+
+.login-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.login-input {
+  width: 100%;
+  padding: 12px 15px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 1rem;
+  transition: border-color 0.3s;
+}
+
+.login-input:focus {
+  border-color: #002D72;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 45, 114, 0.2);
+}
+
+.login-button {
+  padding: 12px 24px;
+  background-color: #002D72;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.login-button:hover {
+  background-color: #001F4F;
+}
+
+.login-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.login-footer {
+  margin-top: 2rem;
+  text-align: center;
+  color: #777;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+  .login-container {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+  
+  .login-title {
+    font-size: 1.8rem;
+  }
+}

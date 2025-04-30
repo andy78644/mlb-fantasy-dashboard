@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import './LoginPage.css'; // Import the new CSS file
 
 function LoginPage() {
   const [authCode, setAuthCode] = useState('');
@@ -78,37 +79,57 @@ function LoginPage() {
   };
 
   return (
-    <div>
-      <h1>Login Required</h1>
-      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-      <p>
-        To use the dashboard, you need to authorize with Yahoo Fantasy Sports.
-      </p>
-      <ol>
-        <li>
-          <a href={yahooAuthUrl} target="_blank" rel="noopener noreferrer">
-            Click here to get your Yahoo Authorization Code
-          </a>
-           (opens in a new tab).
-        </li>
-        <li>Log in to Yahoo if prompted.</li>
-        <li>Grant access to the application.</li>
-        <li>Yahoo will display an authorization code. Copy that code.</li>
-        <li>Paste the code into the input field below and click "Login".</li>
-      </ol>
+    <div className="login-container">
+      <div className="login-header">
+        <img 
+          src="https://images.seeklogo.com/logo-png/25/1/mlb-logo-png_seeklogo-250501.png" 
+          alt="MLB Logo" 
+          className="login-logo" 
+        />
+        <h1 className="login-title">Fantasy Baseball Dashboard</h1>
+        <p className="login-subtitle">Track and analyze your Yahoo Fantasy Baseball leagues</p>
+      </div>
 
-      <input
-        type="text"
-        value={authCode}
-        onChange={(e) => setAuthCode(e.target.value)}
-        placeholder="Paste Yahoo Authorization Code Here"
-        style={{ width: '400px', marginBottom: '10px', padding: '8px' }}
-        aria-label="Yahoo Authorization Code"
-      />
-      <br />
-      <button onClick={handleManualLogin} style={{ padding: '10px 15px' }}>
-        Login with Pasted Code
-      </button>
+      {error && <div className="error-message">Error: {error}</div>}
+      
+      <div className="login-instructions">
+        <h3>Authentication Required</h3>
+        <p>To access your fantasy baseball data, you need to authorize with Yahoo Fantasy Sports:</p>
+        <ol className="login-instruction-steps">
+          <li>
+            <a href={yahooAuthUrl} target="_blank" rel="noopener noreferrer" className="auth-link">
+              Click here to get your Yahoo Authorization Code
+            </a>
+            <span> (opens in a new tab)</span>
+          </li>
+          <li>Log in to Yahoo if prompted</li>
+          <li>Grant access to the application</li>
+          <li>Yahoo will display an authorization code - copy that code</li>
+          <li>Paste the code into the field below and click "Sign In"</li>
+        </ol>
+      </div>
+
+      <div className="login-form">
+        <input
+          type="text"
+          value={authCode}
+          onChange={(e) => setAuthCode(e.target.value)}
+          placeholder="Paste Yahoo Authorization Code Here"
+          className="login-input"
+          aria-label="Yahoo Authorization Code"
+        />
+        <button 
+          onClick={handleManualLogin} 
+          className="login-button"
+          disabled={!authCode.trim()}
+        >
+          Sign In
+        </button>
+      </div>
+
+      <div className="login-footer">
+        <p>MLB Fantasy Dashboard &copy; {new Date().getFullYear()}</p>
+      </div>
     </div>
   );
 }

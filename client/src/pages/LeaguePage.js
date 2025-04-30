@@ -303,7 +303,7 @@ function LeaguePage() {
 
   // Render power index content
   const renderPowerIndex = () => {
-    if (!powerIndexData || powerIndexData.length === 0) {
+    if (!powerIndexData || !Array.isArray(powerIndexData) || powerIndexData.length === 0) {
       return <p>No power index data available for Week {selectedWeek}.</p>;
     }
 
