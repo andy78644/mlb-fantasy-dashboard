@@ -16,7 +16,7 @@ function LeaguePage() {
   const [selectedWeek, setSelectedWeek] = useState(null);
   const [currentWeek, setCurrentWeek] = useState(null);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [activeTab, setActiveTab] = useState('roster'); // 'roster', 'matchup', 'powerIndex'
+  const [activeTab, setActiveTab] = useState('roster');
 
   // Fetch league details and current week
   useEffect(() => {
@@ -25,8 +25,9 @@ function LeaguePage() {
       try {
         // Fetch the league metadata from API
         const response = await apiService.get(`/api/leagues/${leagueId}/metadata`);
+        console.log("League metadata:", response.data);
         const leagueContent = response.data.fantasy_content.league;
-        
+        console.log("League metadata:", leagueContent);
         setLeagueDetails({
           name: leagueContent.name,
           season: leagueContent.season,
@@ -59,13 +60,19 @@ function LeaguePage() {
       
       try {
         const response = await apiService.get(`/api/teams/${leagueId}`);
+        console.log("Teams data:", response.data); 
         setTeams(response.data);
         
         // Find the user's team 
         // For simplicity, we'll just use the first team for the demo
         // In a real app, you'd check which team belongs to the current user
         if (response.data.length > 0) {
-          setMyTeam(response.data[0]);
+          for (const team of response.data) {
+            if (team.managerName=== '子右 楊') {
+              setMyTeam(team);
+              break;
+            }
+          }
         }
       } catch (err) {
         console.error("Error fetching teams:", err);
@@ -131,25 +138,25 @@ function LeaguePage() {
   }, [myTeam, selectedWeek]);
 
   // Fetch power index data when leagueId, selectedWeek, and selectedYear are available
-  useEffect(() => {
-    const fetchPowerIndex = async () => {
-      if (!leagueId || !selectedWeek || !selectedYear) return;
+  // useEffect(() => {
+  //   const fetchPowerIndex = async () => {
+  //     if (!leagueId || !selectedWeek || !selectedYear) return;
       
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await apiService.get(`/api/leagues/${leagueId}/powerindex?week=${selectedWeek}&year=${selectedYear}`);
-        setPowerIndexData(response.data || []);
-      } catch (err) {
-        console.error("Error fetching power index:", err);
-        setError(err.response?.data?.message || 'Failed to fetch power index data');
-      } finally {
-        setLoading(false);
-      }
-    };
+  //     setLoading(true);
+  //     setError(null);
+  //     try {
+  //       const response = await apiService.get(`/api/leagues/${leagueId}/powerindex?week=${selectedWeek}&year=${selectedYear}`);
+  //       setPowerIndexData(response.data || []);
+  //     } catch (err) {
+  //       console.error("Error fetching power index:", err);
+  //       setError(err.response?.data?.message || 'Failed to fetch power index data');
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
 
-    fetchPowerIndex();
-  }, [leagueId, selectedWeek, selectedYear]);
+  //   fetchPowerIndex();
+  // }, [leagueId, selectedWeek, selectedYear]);
 
   const handleWeekChange = (e) => {
     setSelectedWeek(parseInt(e.target.value));
