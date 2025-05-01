@@ -478,6 +478,44 @@ select {
     text-align: left;
 }
 
+/* Stats comparison section headers */
+.section-header th {
+    background-color: #343a40;
+    color: white;
+    text-align: center;
+    padding: 8px;
+    font-weight: bold;
+}
+
+/* Individual stat item winning/losing indicators in team cards */
+.stat-item.stat-winning {
+    background-color: rgba(40, 167, 69, 0.15); /* Light green background */
+    border-left: 3px solid #28a745;
+}
+
+.stat-item.stat-winning:hover {
+    background-color: rgba(40, 167, 69, 0.25); /* Slightly darker on hover */
+}
+
+.stat-item.stat-losing {
+    background-color: rgba(220, 53, 69, 0.15); /* Light red background */
+    border-left: 3px solid #dc3545;
+}
+
+.stat-item.stat-losing:hover {
+    background-color: rgba(220, 53, 69, 0.25); /* Slightly darker on hover */
+}
+
+/* Highlight the my-team-value cell to make it stand out */
+.stats-table td.my-team-value {
+    font-weight: bold;
+}
+
+/* Offense/Defense stats sections */
+.offense-stats, .defense-stats, .other-stats {
+    border-bottom: 4px solid #f8f9fa;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .matchup-teams {
@@ -509,4 +547,52 @@ select {
     .tabs {
         margin-left: 0;
     }
+}
+
+.team-points.large {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #0056b3;
+  margin: 5px 0;
+}
+
+/* Team Stats Section Styling */
+.team-stats-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 15px;
+}
+
+.team-stats-section {
+  border-radius: 8px;
+  padding: 10px;
+  background-color: #f8f9fa;
+}
+
+.offense-section {
+  border-left: 4px solid #28a745; /* Green for offense */
+}
+
+.defense-section {
+  border-left: 4px solid #007bff; /* Blue for defense */
+}
+
+.other-section {
+  border-left: 4px solid #6c757d; /* Gray for other stats */
+}
+
+.stats-category-header {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  color: #343a40;
+  text-align: center;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.team-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
 }

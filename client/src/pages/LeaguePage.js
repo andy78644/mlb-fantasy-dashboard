@@ -3,6 +3,28 @@ import { useParams } from 'react-router-dom';
 import apiService from '../api/apiService';
 import './LeaguePage.css'; // We'll create this CSS file
 
+// Define the STAT_DOC mapping with stat type (positive/negative/neutral)
+// Format matches the .env file structure
+const STAT_DOC = {
+    "3": { name: "AVG", type: "positive" },
+    "7": { name: "BB", type: "positive" },
+    "12": { name: "HR", type: "positive" },
+    "16": { name: "SB", type: "positive" },
+    "18": { name: "R", type: "positive" },
+    "13": { name: "RBI", type: "positive" },
+    "26": { name: "ERA", type: "negative" },
+    "27": { name: "WHIP", type: "negative" },
+    "28": { name: "W", type: "positive" },
+    "32": { name: "SV", type: "positive" },
+    "39": { name: "BB", type: "negative" }, // Pitcher BB - negative
+    "42": { name: "K", type: "positive" },
+    "50": { name: "IP", type: "neutral" },
+    "55": { name: "OPS", type: "positive" },
+    "60": { name: "H/AB", type: "neutral" },
+    "83": { name: "QS", type: "positive" }
+};
+
+
 function LeaguePage() {
   const { leagueId } = useParams();
   const [leagueDetails, setLeagueDetails] = useState(null);
@@ -177,7 +199,7 @@ function LeaguePage() {
     // Fetch team matchup when the selected team and week are available
     useEffect(() => {
       const fetchMatchup = async () => {
-        if (!myTeam || !selectedWeek || !leagueId) { // Use myTeam directly
+        if (!myTeam || !selectedWeek || !leagueId) {
           setMatchupData(null);
           return;
         }
@@ -431,6 +453,65 @@ function LeaguePage() {
         return <p>No stats available for comparison.</p>;
       }
 
+      // Define offense and defense stat IDs based on STAT_DOC keys
+      const offenseStatIds = ["3", "7", "12", "16", "18", "13", "55", "60"];
+      const defenseStatIds = ["26", "27", "28", "32", "39", "42", "50", "83"];
+
+      // Filter the available stat IDs into offense and defense categories
+      const availableOffenseIds = Array.from(allStatIds).filter(id => offenseStatIds.includes(id)).sort();
+      const availableDefenseIds = Array.from(allStatIds).filter(id => defenseStatIds.includes(id)).sort();
+      const otherStatIds = Array.from(allStatIds).filter(id => !offenseStatIds.includes(id) && !defenseStatIds.includes(id)).sort(); // Catch any others
+
+      // Updated renderStatRows to create a more structured layout
+      const renderStatRows = (statIds, category) => {
+        if (statIds.length === 0) return null;
+        
+        return (
+          <tbody className={`${category}-stats`}>
+            <tr className="section-header">
+              <th colSpan="3">{category === 'offense' ? 'Offense' : 'Defense'}</th>
+            </tr>
+            {statIds.map(statId => {
+              // Use STAT_DOC first, then fetched definitions, then default
+              const statName = STAT_DOC[statId]?.name || statDefinitions[statId] || `Stat ${statId}`;
+              const myValue = myTeamData.stats?.[statId]?.value || "-";
+              const opponentValue = opponentTeam.stats?.[statId]?.value || "-";
+              
+              // Determine the stat type (positive/negative/neutral)
+              const statType = STAT_DOC[statId]?.type || "neutral";
+              
+              // Set comparison classes based on the stat type and values
+              let comparisonClass = "";
+              
+              if (myValue !== "-" && opponentValue !== "-") {
+                const myValueNum = parseFloat(myValue);
+                const oppValueNum = parseFloat(opponentValue);
+                
+                if (!isNaN(myValueNum) && !isNaN(oppValueNum)) {
+                  if (statType === "positive") {
+                    // For positive stats (higher is better)
+                    comparisonClass = myValueNum > oppValueNum ? "stat-winning" : 
+                                     (myValueNum < oppValueNum ? "stat-losing" : "");
+                  } else if (statType === "negative") {
+                    // For negative stats (lower is better)
+                    comparisonClass = myValueNum < oppValueNum ? "stat-winning" : 
+                                     (myValueNum > oppValueNum ? "stat-losing" : "");
+                  }
+                }
+              }
+
+              return (
+                <tr key={statId} className={comparisonClass}>
+                  <td>{statName}</td>
+                  <td className="my-team-value">{myValue}</td>
+                  <td>{opponentValue}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        );
+      };
+
       return (
         <div className="stats-comparison">
           <h3>Stats Comparison</h3>
@@ -442,21 +523,12 @@ function LeaguePage() {
                 <th>{opponentTeam.name}</th>
               </tr>
             </thead>
-            <tbody>
-              {Array.from(allStatIds).sort().map(statId => {
-                const statName = statDefinitions[statId] || `Stat ${statId}`;
-                const myValue = myTeamData.stats?.[statId]?.value || "-";
-                const opponentValue = opponentTeam.stats?.[statId]?.value || "-";
-                
-                return (
-                  <tr key={statId}>
-                    <td>{statName}</td>
-                    <td>{myValue}</td>
-                    <td>{opponentValue}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
+            {/* Offense Section */}
+            {availableOffenseIds.length > 0 && renderStatRows(availableOffenseIds, 'offense')}
+            {/* Defense Section */}
+            {availableDefenseIds.length > 0 && renderStatRows(availableDefenseIds, 'defense')}
+            {/* Other Stats Section (Optional) */}
+            {otherStatIds.length > 0 && renderStatRows(otherStatIds, 'other')}
           </table>
         </div>
       );
@@ -464,6 +536,87 @@ function LeaguePage() {
 
     // Render a team card with modern styling
     const renderTeamCard = (team) => {
+      // Define offense and defense stat IDs
+      const offenseStatIds = ["3", "7", "12", "16", "18", "13", "55", "60"];
+      const defenseStatIds = ["26", "27", "28", "32", "39", "42", "50", "83"];
+      
+      // Filter the team stats into categories
+      const offenseStats = {};
+      const defenseStats = {};
+      const otherStats = {};
+      
+      // Organize stats by category
+      Object.entries(team.stats || {}).forEach(([statId, stat]) => {
+        if (offenseStatIds.includes(statId)) {
+          offenseStats[statId] = stat;
+        } else if (defenseStatIds.includes(statId)) {
+          defenseStats[statId] = stat;
+        } else {
+          otherStats[statId] = stat;
+        }
+      });
+      
+      // Helper function to render stats for a category
+      const renderStatsByCategory = (statsObject, categoryName) => {
+        if (Object.keys(statsObject).length === 0) return null;
+        
+        return (
+          <div className={`team-stats-section ${categoryName.toLowerCase()}-section`}>
+            <h4 className="stats-category-header">{categoryName}</h4>
+            <div className="team-stats-grid">
+              {Object.entries(statsObject).map(([statId, stat]) => {
+                // Determine if this team is the user's team
+                const isMyTeam = team.team_key === myTeamData.team_key;
+                
+                // Get the stat values for both teams to compare
+                const myTeamValue = myTeamData.stats?.[statId]?.value || "-";
+                const opponentValue = opponentTeam.stats?.[statId]?.value || "-";
+                
+                // Determine the stat type (positive/negative/neutral)
+                const statType = STAT_DOC[statId]?.type || "neutral";
+                
+                // Set comparison class based on the stat type and comparison
+                let comparisonClass = "";
+                
+                if (myTeamValue !== "-" && opponentValue !== "-") {
+                  const myValueNum = parseFloat(myTeamValue);
+                  const oppValueNum = parseFloat(opponentValue);
+                  
+                  if (!isNaN(myValueNum) && !isNaN(oppValueNum)) {
+                    if (isMyTeam) {
+                      // For my team card
+                      if (statType === "positive") {
+                        comparisonClass = myValueNum > oppValueNum ? "stat-winning" : 
+                                        (myValueNum < oppValueNum ? "stat-losing" : "");
+                      } else if (statType === "negative") {
+                        comparisonClass = myValueNum < oppValueNum ? "stat-winning" : 
+                                        (myValueNum > oppValueNum ? "stat-losing" : "");
+                      }
+                    } else {
+                      // For opponent team card - reverse the logic
+                      if (statType === "positive") {
+                        comparisonClass = oppValueNum > myValueNum ? "stat-winning" : 
+                                        (oppValueNum < myValueNum ? "stat-losing" : "");
+                      } else if (statType === "negative") {
+                        comparisonClass = oppValueNum < myValueNum ? "stat-winning" : 
+                                        (oppValueNum > myValueNum ? "stat-losing" : "");
+                      }
+                    }
+                  }
+                }
+                
+                return (
+                  <div key={statId} className={`stat-item ${comparisonClass}`}>
+                    <span className="stat-name">{STAT_DOC[statId]?.name || statDefinitions[statId] || `Stat ${statId}`}</span>
+                    <span className="stat-value">{stat.value}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      };
+      
       return (
         <div className="team-card">
           <div className="team-header">
@@ -480,17 +633,14 @@ function LeaguePage() {
             <div className="team-info">
               <h3 className="team-name">{team.name}</h3>
               <p className="manager-name">Manager: {team.manager_name}</p>
-              {team.points && <p className="team-points">Points: {team.points}</p>}
-              {team.projected_points && <p className="team-projected-points">Projected: {team.projected_points}</p>}
+              {team.points && <p className="team-points large">{team.points}</p>}
             </div>
           </div>
-          <div className="team-stats">
-            {Object.entries(team.stats || {}).map(([statId, stat]) => (
-              <div key={statId} className="stat-item">
-                <span className="stat-name">{statDefinitions[statId] || `Stat ${statId}`}</span>
-                <span className="stat-value">{stat.value}</span>
-              </div>
-            ))}
+          
+          <div className="team-stats-container">
+            {renderStatsByCategory(offenseStats, "Offense")}
+            {renderStatsByCategory(defenseStats, "Defense")}
+            {Object.keys(otherStats).length > 0 && renderStatsByCategory(otherStats, "Other")}
           </div>
         </div>
       );
