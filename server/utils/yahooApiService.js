@@ -113,15 +113,17 @@ const yahooApiService = {
         const xmlSize = response.data.length;
         console.log(`XML response size: ${xmlSize} bytes`);
         
-          
         // For matchup data - use the streaming matchup parser
         if (url.includes('/matchups')) {
           try {
             console.warn(`XML response too large (${xmlSize} bytes) for direct parsing. Using streaming parser.`);
             return await processMatchupXml(response.data);
+            console.log('Matchup XML processed successfully');
+            console.log('See Again: ', response.data)
+            return 
           } catch (matchupError) {
-            console.error('Error using matchup XML parser:', matchupError);
-            throw new Error(`Failed to process matchup XML: ${matchupError.message}`);
+            console.error('Error using large size XML parser:', matchupError);
+            throw new Error(`Failed to process large size XML: ${matchupError.message}`);
           }
         } else{
           try {
@@ -222,7 +224,7 @@ const yahooApiService = {
   YAHOO_BASE_URL: 'https://fantasysports.yahooapis.com/fantasy/v2',
 
   // Example URL construction (adapt others as needed)
-  gameKey(leaguePrefix) {
+  gameKey() {
       return `${this.YAHOO_BASE_URL}/game/mlb`; // Assuming MLB, adjust if needed
   },
 
@@ -230,13 +232,12 @@ const yahooApiService = {
       return `${this.YAHOO_BASE_URL}/league/${leagueKey}/metadata`;
   },
 
-  myTeam(leagueKey, teamKey) {
+  myTeam(teamKey) {
       return `${this.YAHOO_BASE_URL}/team/${teamKey}/roster`;
       // Or use league context: `${this.YAHOO_BASE_URL}/league/${leagueKey}/teams;team_keys=${teamKey}/roster`;
   },
 
-  // Add other URL builder functions based on the original code...
-  freeAgents(leagueKey, start = 0, count = 25) { // Default count to 25 as per Yahoo limits
+  freeAgents(leagueKey, start = 0, count = 25) { 
     return `${this.YAHOO_BASE_URL}/league/${leagueKey}/players;status=FA;start=${start};count=${count}`;
   },
 
@@ -260,7 +261,7 @@ const yahooApiService = {
     return `${this.YAHOO_BASE_URL}/league/${leagueKey}/transactions`;
   },
 
-  userInfo() { // Doesn't seem to need specific keys based on original code
+  userInfo() {
     return `${this.YAHOO_BASE_URL}/users;use_login=1/games`;
   },
 
@@ -274,194 +275,7 @@ const yahooApiService = {
   },
 };
 
-/**
- * Simple custom parser for matchup data to avoid full XML parsing
- * This extracts just the essential information we need
- */
-function parseMatchupData(xmlData) {
-  // Create a simplified response object
-  const matchupData = {
-    fantasy_content: {
-      team: {
-        matchups: {
-          matchup: []
-        }
-      }
-    }
-  };
-  
-  try {
-    // Extract the week number
-    const weekMatch = xmlData.match(/<week>(\d+)<\/week>/);
-    const week = weekMatch ? weekMatch[1] : null;
-    
-    // Extract team data
-    const teams = [];
-    const teamRegex = /<team>([\s\S]*?)<\/team>/g;
-    let teamMatch;
-    
-    while ((teamMatch = teamRegex.exec(xmlData)) !== null) {
-      const teamContent = teamMatch[1];
-      
-      // Extract team key
-      const teamKeyMatch = teamContent.match(/<team_key>(.*?)<\/team_key>/);
-      const teamKey = teamKeyMatch ? teamKeyMatch[1] : null;
-      
-      // Extract team ID
-      const teamIdMatch = teamContent.match(/<team_id>(\d+)<\/team_id>/);
-      const teamId = teamIdMatch ? teamIdMatch[1] : null;
-      
-      // Extract team name
-      const nameMatch = teamContent.match(/<name>(.*?)<\/name>/);
-      const name = nameMatch ? nameMatch[1] : null;
-      
-      // Extract manager name if available
-      const managerMatch = teamContent.match(/<nickname>(.*?)<\/nickname>/);
-      const managerName = managerMatch ? managerMatch[1] : 'Unknown';
-      
-      // Extract team logo if available
-      const logoMatch = teamContent.match(/<url>(https:\/\/.*?\.jpg)<\/url>/);
-      const teamLogo = logoMatch ? logoMatch[1] : null;
-      
-      // Extract points
-      const pointsMatch = teamContent.match(/<total>([0-9.-]+)<\/total>/);
-      const points = pointsMatch ? pointsMatch[1] : '0';
-      
-      // Extract stats - simplified version
-      const stats = {};
-      const statRegex = /<stat>\s*<stat_id>(\d+)<\/stat_id>\s*<value>([^<]*)<\/value>\s*<\/stat>/g;
-      let statMatch;
-      
-      while ((statMatch = statRegex.exec(teamContent)) !== null) {
-        const statId = statMatch[1];
-        const value = statMatch[2];
-        stats[statId] = { value };
-      }
-      
-      teams.push({
-        team_key: teamKey,
-        team_id: teamId,
-        name,
-        team_logo: teamLogo,
-        manager_name: managerName,
-        points,
-        stats
-      });
-    }
-    
-    // Create a matchup object with the data we extracted
-    const matchup = {
-      week,
-      status: 'complete', // Assuming complete, adjust if needed
-      is_playoffs: '0',   // Default values, could be extracted if needed
-      is_consolation: '0',
-      is_tied: '0',
-      winner_team_key: null,
-      teams
-    };
-    
-    matchupData.fantasy_content.team.matchups.matchup.push(matchup);
-    
-    return matchupData;
-  } catch (error) {
-    console.error('Error in custom matchup parser:', error);
-    throw new Error('Failed to parse matchup data with custom parser');
-  }
-}
 
-/**
- * Process large XML data by saving to temp file and parsing with a streaming approach
- * @param {string} xmlData - The XML content to parse
- * @param {string} rootElement - The root element to extract (e.g., 'fantasy_content')
- * @returns {Promise<object>} - Parsed JSON object
- */
-async function processLargeXml(xmlData, rootElement = 'fantasy_content') {
-  // Create temp file
-  const tempFile = path.join(os.tmpdir(), `yahoo_fantasy_${Date.now()}.xml`);
-  
-  try {
-    // Write XML to temp file
-    await fs.promises.writeFile(tempFile, xmlData, 'utf8');
-    console.log(`Large XML saved to temporary file: ${tempFile}`);
-    
-    // Create a readable stream from the file
-    const stream = fs.createReadStream(tempFile);
-    
-    // Create an XML parser that reads from the stream
-    const parser = new XmlStream(stream);
-    
-    // Result object that will hold our parsed data
-    const result = {};
-    
-    // Create a promise that resolves when parsing is complete
-    return new Promise((resolve, reject) => {
-      // Collect all elements under the root
-      result[rootElement] = {};
-      
-      // Set up error handling
-      parser.on('error', (err) => {
-        console.error('Error parsing XML stream:', err);
-        reject(new Error(`XML stream parsing error: ${err.message}`));
-      });
-      
-      // When we reach the end of the file
-      parser.on('end', () => {
-        console.log('Finished parsing large XML file');
-        // Clean up temp file
-        fs.unlink(tempFile, (err) => {
-          if (err) console.warn(`Warning: Could not delete temp file ${tempFile}:`, err);
-          else console.log(`Temp file ${tempFile} deleted successfully`);
-        });
-        resolve(result);
-      });
-      
-      // Handle collecting specific elements we're interested in
-      // You'll need to modify these based on the structure of your XML
-      
-      // Example: Collect league data
-      parser.collect('league');
-      parser.on(`endElement: ${rootElement}`, (item) => {
-        Object.assign(result[rootElement], item);
-      });
-      
-      // Example: Collect team data
-      parser.collect('team');
-      parser.on('endElement: team', (team) => {
-        if (!result[rootElement].teams) {
-          result[rootElement].teams = { team: [] };
-        }
-        
-        // Handle single team vs array of teams
-        if (Array.isArray(result[rootElement].teams.team)) {
-          result[rootElement].teams.team.push(team);
-        } else {
-          result[rootElement].teams.team = [team];
-        }
-      });
-      
-      // Example: Collect player data
-      parser.collect('player');
-      parser.on('endElement: player', (player) => {
-        // Initialize the path if it doesn't exist
-        if (!result[rootElement].league) result[rootElement].league = {};
-        if (!result[rootElement].league.players) result[rootElement].league.players = { player: [] };
-        
-        // Add the player data
-        result[rootElement].league.players.player.push(player);
-      });
-      
-      // Similar handlers for other elements you need to collect
-    });
-  } catch (err) {
-    // Clean up temp file if something went wrong
-    try {
-      await fs.promises.unlink(tempFile);
-    } catch (cleanupErr) {
-      console.warn(`Warning: Could not delete temp file ${tempFile}:`, cleanupErr);
-    }
-    throw new Error(`Failed to process large XML: ${err.message}`);
-  }
-}
 
 /**
  * Specialized streaming parser for matchup data
@@ -471,7 +285,7 @@ async function processLargeXml(xmlData, rootElement = 'fantasy_content') {
 async function processMatchupXml(xmlData) {
   // Create temp file
   const tempFile = path.join(os.tmpdir(), `yahoo_matchup_${Date.now()}.xml`);
-  
+  console.log(`xmlData: `, xmlData); // Debug log
   try {
     // Write XML to temp file
     await fs.promises.writeFile(tempFile, xmlData, 'utf8');
@@ -500,6 +314,7 @@ async function processMatchupXml(xmlData) {
     // Current matchup to build
     let currentMatchup = null;
     let currentTeam = null;
+    let collectingTeamStats = false; // Flag to know when we are inside team_stats
     
     // Create a promise that resolves when parsing is complete
     return new Promise((resolve, reject) => {
@@ -509,37 +324,19 @@ async function processMatchupXml(xmlData) {
         reject(new Error(`Matchup XML stream parsing error: ${err.message}`));
       });
       
-      // When we reach the end of the file
-      parser.on('end', () => {
-        console.log('Finished parsing matchup XML file');
-        // Clean up temp file
-        fs.unlink(tempFile, (err) => {
-          if (err) console.warn(`Warning: Could not delete temp file ${tempFile}:`, err);
-          else console.log(`Temp file ${tempFile} deleted successfully`);
-        });
-        resolve(result);
+      // --- Requesting Team Info --- 
+      // These seem okay, they target the top-level <team> element
+      parser.on('endElement: fantasy_content > team > team_key', (item) => {
+        result.fantasy_content.team.team_key = item.$text;
       });
-      
-      // Extract team details (the team requesting the matchup)
-      parser.on('endElement: team > team_key', (text) => {
-        if (!result.fantasy_content.team.team_key) {
-          result.fantasy_content.team.team_key = text['$text'];
-        }
+      parser.on('endElement: fantasy_content > team > team_id', (item) => {
+        result.fantasy_content.team.team_id = item.$text;
       });
-      
-      parser.on('endElement: team > team_id', (text) => {
-        if (!result.fantasy_content.team.team_id) {
-          result.fantasy_content.team.team_id = text['$text'];
-        }
+      parser.on('endElement: fantasy_content > team > name', (item) => {
+        result.fantasy_content.team.name = item.$text;
       });
-      
-      parser.on('endElement: team > name', (text) => {
-        if (!result.fantasy_content.team.name) {
-          result.fantasy_content.team.name = text['$text'];
-        }
-      });
-      
-      // Start of a matchup
+
+      // --- Matchup Processing --- 
       parser.on('startElement: matchup', () => {
         currentMatchup = {
           week: '',
@@ -548,57 +345,40 @@ async function processMatchupXml(xmlData) {
           is_consolation: '0',
           is_tied: '0',
           winner_team_key: '',
-          teams: []
+          teams: [] // Initialize teams array for the matchup
         };
       });
-      
-      // End of a matchup
+
       parser.on('endElement: matchup', () => {
         if (currentMatchup) {
           result.fantasy_content.team.matchups.matchup.push(currentMatchup);
           currentMatchup = null;
         }
       });
-      
-      // Matchup attributes
-      parser.on('endElement: matchup > week', (text) => {
-        if (currentMatchup) {
-          currentMatchup.week = text['$text'];
-        }
+
+      // Matchup attributes (relative to matchup element)
+      parser.on('endElement: matchup > week', (item) => {
+        if (currentMatchup) currentMatchup.week = item.$text;
       });
-      
-      parser.on('endElement: matchup > status', (text) => {
-        if (currentMatchup) {
-          currentMatchup.status = text['$text'];
-        }
+      parser.on('endElement: matchup > status', (item) => {
+        if (currentMatchup) currentMatchup.status = item.$text;
       });
-      
-      parser.on('endElement: matchup > is_playoffs', (text) => {
-        if (currentMatchup) {
-          currentMatchup.is_playoffs = text['$text'];
-        }
+      parser.on('endElement: matchup > is_playoffs', (item) => {
+        if (currentMatchup) currentMatchup.is_playoffs = item.$text;
       });
-      
-      parser.on('endElement: matchup > is_consolation', (text) => {
-        if (currentMatchup) {
-          currentMatchup.is_consolation = text['$text'];
-        }
+      parser.on('endElement: matchup > is_consolation', (item) => {
+        if (currentMatchup) currentMatchup.is_consolation = item.$text;
       });
-      
-      parser.on('endElement: matchup > is_tied', (text) => {
-        if (currentMatchup) {
-          currentMatchup.is_tied = text['$text'];
-        }
+      parser.on('endElement: matchup > is_tied', (item) => {
+        if (currentMatchup) currentMatchup.is_tied = item.$text;
       });
-      
-      parser.on('endElement: matchup > winner_team_key', (text) => {
-        if (currentMatchup) {
-          currentMatchup.winner_team_key = text['$text'];
-        }
+      parser.on('endElement: matchup > winner_team_key', (item) => {
+        if (currentMatchup) currentMatchup.winner_team_key = item.$text;
       });
-      
-      // Team in matchup
-      parser.on('startElement: teams > team', () => {
+
+      // --- Team Processing within Matchup --- 
+      // Start of a team within the <teams> collection
+      parser.on('startElement: matchup > teams > team', () => {
         currentTeam = {
           team_key: '',
           team_id: '',
@@ -606,75 +386,116 @@ async function processMatchupXml(xmlData) {
           team_logo: '',
           manager_name: '',
           points: '0',
-          projected_points: '0',
+          projected_points: '0', // Assuming this might exist, add if needed
           stats: {}
         };
+        collectingTeamStats = false; // Reset flag for the new team
       });
-      
-      parser.on('endElement: teams > team', () => {
+
+      // End of a team within the <teams> collection
+      parser.on('endElement: matchup > teams > team', () => {
         if (currentMatchup && currentTeam) {
-          currentMatchup.teams.push(currentTeam);
-          currentTeam = null;
+          // Ensure we actually collected some data before pushing
+          if (currentTeam.team_key) { 
+             currentMatchup.teams.push(currentTeam);
+          } else {
+             console.warn("Skipping team push, no team_key found for:", currentTeam);
+          }
         }
+        currentTeam = null; // Reset for the next team
+        collectingTeamStats = false;
       });
-      
-      // Team attributes
-      parser.on('endElement: teams > team > team_key', (text) => {
-        if (currentTeam) {
-          currentTeam.team_key = text['$text'];
+
+      // Team attributes (relative to the current team element)
+      // Use paths relative to `matchup > teams > team`
+      parser.on('endElement: matchup > teams > team > team_key', (item) => {
+        if (currentTeam) currentTeam.team_key = item.$text;
+      });
+      parser.on('endElement: matchup > teams > team > team_id', (item) => {
+        if (currentTeam) currentTeam.team_id = item.$text;
+      });
+      parser.on('endElement: matchup > teams > team > name', (item) => {
+        // Avoid overwriting if the top-level team name was already parsed here
+        if (currentTeam && !currentTeam.name) currentTeam.name = item.$text;
+      });
+      parser.on('endElement: matchup > teams > team > team_logos > team_logo > url', (item) => {
+        if (currentTeam) currentTeam.team_logo = item.$text;
+      });
+      parser.on('endElement: matchup > teams > team > managers > manager > nickname', (item) => {
+        if (currentTeam) currentTeam.manager_name = item.$text;
+      });
+      parser.on('endElement: matchup > teams > team > team_points > total', (item) => {
+        if (currentTeam) currentTeam.points = item.$text;
+      });
+      // Add handler for projected points if needed, e.g.:
+      // parser.on('endElement: matchup > teams > team > team_projected_points > total', (item) => {
+      //   if (currentTeam) currentTeam.projected_points = item.$text;
+      // });
+
+      // --- Stat Processing within Team --- 
+      // Use a flag to know when we are inside the stats section of the correct team
+      parser.on('startElement: matchup > teams > team > team_stats > stats', () => {
+          if (currentTeam) {
+              collectingTeamStats = true;
+              currentTeam.stats = {}; // Initialize/reset stats for the current team
+          }
+      });
+
+      parser.on('endElement: matchup > teams > team > team_stats > stats', () => {
+          if (currentTeam) {
+              collectingTeamStats = false;
+          }
+      });
+
+      // Collect individual stat elements when inside the correct context
+      parser.collect('stat'); // Collect all stat elements
+      parser.on('endElement: stat', (stat) => {
+          // Process the collected stat only if we are inside the team_stats of the current team
+          if (collectingTeamStats && currentTeam && stat.stat_id && stat.value !== undefined) {
+              currentTeam.stats[stat.stat_id] = {
+                  stat_id: stat.stat_id,
+                  value: stat.value
+              };
+          }
+      });
+
+      // --- End of Parsing --- 
+      parser.on('end', () => {
+        console.log('Finished parsing matchup XML file');
+        
+        // --- Filtering Logic (runs after parsing is complete) ---
+        if (result.fantasy_content && result.fantasy_content.team && result.fantasy_content.team.matchups && result.fantasy_content.team.matchups.matchup) {
+            const requestingTeamKey = result.fantasy_content.team.team_key;
+            if (requestingTeamKey) {
+                result.fantasy_content.team.matchups.matchup.forEach(matchup => {
+                    if (matchup.teams && Array.isArray(matchup.teams)) {
+                        // Log before filtering
+                        console.log(`Matchup Week ${matchup.week}: Teams before filtering:`, matchup.teams.map(t => t.team_key)); 
+                    } else {
+                        console.warn(`Matchup for week ${matchup.week} has no teams array or it's not an array.`);
+                    }
+                });
+            } else {
+                console.warn("Could not determine requesting team key for matchup filtering.");
+            }
+        } else {
+            console.warn("Result structure missing expected matchup data for filtering.");
         }
+        // --- Filtering Logic End ---
+
+        // *** DEBUG: Log the final parsed and filtered result ***
+        console.log("Final parsed matchup data:", JSON.stringify(result, null, 2));
+
+        // Clean up temp file
+        fs.unlink(tempFile, (err) => {
+          if (err) console.warn(`Warning: Could not delete temp file ${tempFile}:`, err);
+          else console.log(`Temp file ${tempFile} deleted successfully`);
+        });
+        console.log('See Again: ', result)
+        resolve(result);
       });
-      
-      parser.on('endElement: teams > team > team_id', (text) => {
-        if (currentTeam) {
-          currentTeam.team_id = text['$text'];
-        }
-      });
-      
-      parser.on('endElement: teams > team > name', (text) => {
-        if (currentTeam) {
-          currentTeam.name = text['$text'];
-        }
-      });
-      
-      // Team logo (more complex path)
-      parser.on('endElement: teams > team > team_logos > team_logo > url', (text) => {
-        if (currentTeam) {
-          currentTeam.team_logo = text['$text'];
-        }
-      });
-      
-      // Manager name (complex path)
-      parser.on('endElement: teams > team > managers > manager > nickname', (text) => {
-        if (currentTeam) {
-          currentTeam.manager_name = text['$text'];
-        }
-      });
-      
-      // Points
-      parser.on('endElement: teams > team > team_points > total', (text) => {
-        if (currentTeam) {
-          currentTeam.points = text['$text'];
-        }
-      });
-      
-      parser.on('endElement: teams > team > team_projected_points > total', (text) => {
-        if (currentTeam) {
-          currentTeam.projected_points = text['$text'];
-        }
-      });
-      
-      // Stats
-      parser.collect('stat');
-      parser.on('endElement: teams > team > team_stats > stats > stat', (stat) => {
-        if (currentTeam && stat.stat_id && stat.value) {
-          currentTeam.stats[stat.stat_id] = {
-            stat_id: stat.stat_id,
-            value: stat.value
-          };
-        }
-      });
-    });
+
+    }); // End of Promise
   } catch (err) {
     // Clean up temp file if something went wrong
     try {

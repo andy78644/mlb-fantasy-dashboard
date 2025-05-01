@@ -52,48 +52,8 @@ router.get('/:teamKey/matchups', ensureAuth, async (req, res) => {
     // Use the improved function with automatic token refresh
     const data = await yahooApiService.makeAPIrequestWithTokenRefresh(apiUrl, accessToken, refreshToken);
     
-    // Process the data to make it easier to work with on the frontend
-    // Extract the matchup data from the Yahoo API response
-    const fantasyContent = data.fantasy_content;
-    const matchupData = fantasyContent?.team?.matchups?.matchup;
-    
-    let processedMatchup = {};
-    
-    if (matchupData) {
-      // Handle multiple matchups or single matchup
-      const matchupArray = Array.isArray(matchupData) ? matchupData : [matchupData];
-      // For simplicity, we'll just use the first matchup (should be only one per week)
-      const matchup = matchupArray[0];
-      
-      // Extract useful data
-      processedMatchup = {
-        week: matchup.week,
-        status: matchup.status,
-        is_playoffs: matchup.is_playoffs === '1',
-        is_consolation: matchup.is_consolation === '1',
-        is_tied: matchup.is_tied === '1',
-        winner_team_key: matchup.winner_team_key,
-        teams: []
-      };
-      
-      // Extract team data
-      if (matchup.teams && matchup.teams.team) {
-        const teamsArray = Array.isArray(matchup.teams.team) ? matchup.teams.team : [matchup.teams.team];
-        
-        processedMatchup.teams = teamsArray.map(team => ({
-          team_key: team.team_key,
-          team_id: team.team_id,
-          name: team.name,
-          team_logo: team.team_logos?.team_logo?.url,
-          manager_name: team.managers?.manager?.nickname || 'Unknown',
-          points: team.team_points?.total || '0',
-          projected_points: team.team_projected_points?.total || '0',
-          stats: processTeamStats(team.team_stats?.stats?.stat)
-        }));
-      }
-    }
-    
-    res.json(processedMatchup);
+    // Send the original data format directly to the client
+    res.json(data);
   } catch (err) {
     console.error('Error fetching team matchup:', err.message);
     if (err.isTokenExpired || err.message.includes('401')) {
