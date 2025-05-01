@@ -516,83 +516,148 @@ select {
     border-bottom: 4px solid #f8f9fa;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .matchup-teams {
-        flex-direction: column;
-    }
-
-    .my-team, .opponent-team {
-        max-width: 100%;
-    }
-
-    .vs-indicator {
-        margin: 15px 0;
-    }
-
-    .team-stats {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    }
-
-    .controls-container {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .week-selector, .manager-selector, .tabs {
-        width: 100%;
-        margin-bottom: 10px;
-    }
-
-    .tabs {
-        margin-left: 0;
-    }
+/* 為折線圖添加樣式 */
+.power-index-chart {
+  margin-top: 40px;
+  padding: 20px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.team-points.large {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #0056b3;
-  margin: 5px 0;
+.chart-wrapper {
+  display: flex;
+  flex-direction: row;
 }
 
-/* Team Stats Section Styling */
-.team-stats-container {
+.chart-container {
+  position: relative;
+  width: 70%;
+  min-height: 400px;
+}
+
+.team-ranking-legend {
+  width: 30%;
+  padding-left: 20px;
+  border-left: 1px solid #eee;
+}
+
+.team-ranking-legend h3 {
+  font-size: 1.1rem;
+  margin-bottom: 15px;
+  text-align: center;
+  color: #333;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.team-legend-items {
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  padding: 15px;
-}
-
-.team-stats-section {
-  border-radius: 8px;
-  padding: 10px;
-  background-color: #f8f9fa;
-}
-
-.offense-section {
-  border-left: 4px solid #28a745; /* Green for offense */
-}
-
-.defense-section {
-  border-left: 4px solid #007bff; /* Blue for defense */
-}
-
-.other-section {
-  border-left: 4px solid #6c757d; /* Gray for other stats */
-}
-
-.stats-category-header {
-  margin: 0 0 10px 0;
-  font-size: 16px;
-  color: #343a40;
-  text-align: center;
-  padding-bottom: 5px;
-  border-bottom: 1px solid #dee2e6;
-}
-
-.team-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 8px;
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+.team-legend-item {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+  transition: all 0.2s ease;
+}
+
+.team-legend-item:hover {
+  background-color: #f0f0f0;
+  transform: translateX(3px);
+}
+
+.team-legend-item.selected-manager {
+  background-color: #e8f4fd;
+  border-left: 3px solid #007bff;
+}
+
+.team-rank {
+  font-weight: bold;
+  margin-right: 10px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background-color: #eee;
+  font-size: 0.8rem;
+}
+
+.team-color-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.team-legend-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.9rem;
+}
+
+.team-legend-power-index {
+  font-weight: bold;
+  color: #007bff;
+  min-width: 50px;
+  text-align: right;
+  font-size: 0.9rem;
+}
+
+.loading-chart {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 400px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  color: #666;
+  font-size: 1.2rem;
+}
+
+.no-chart-data {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  color: #666;
+  font-size: 1.2rem;
+  margin-top: 20px;
+}
+
+/* 適配手機端顯示 */
+@media (max-width: 768px) {
+  .chart-wrapper {
+    flex-direction: column;
+  }
+  
+  .chart-container, 
+  .team-ranking-legend {
+    width: 100%;
+  }
+  
+  .team-ranking-legend {
+    border-left: none;
+    border-top: 1px solid #eee;
+    padding-left: 0;
+    padding-top: 20px;
+    margin-top: 20px;
+  }
+  
+  .team-legend-items {
+    max-height: none;
+    overflow-y: visible;
+  }
 }

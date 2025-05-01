@@ -1,6 +1,6 @@
 # MLB Fantasy Baseball Dashboard
 
-A full-stack web application for managing and analyzing your Yahoo Fantasy Baseball leagues.
+A full-stack web application for managing and analyzing your Yahoo Fantasy Baseball leagues with powerful visualization and tracking tools.
 
 ## Overview
 
@@ -10,7 +10,7 @@ The MLB Fantasy Baseball Dashboard provides fantasy baseball managers with a com
 - View and manage multiple fantasy baseball leagues
 - Monitor team performance and statistics
 - Analyze player data and matchups
-- Track weekly performance metrics
+- Track weekly performance metrics with Power Index visualization
 
 ## Features
 
@@ -19,6 +19,9 @@ The MLB Fantasy Baseball Dashboard provides fantasy baseball managers with a com
 - **League Management**: View and interact with all your fantasy baseball leagues
 - **Team Analysis**: Detailed performance metrics for your fantasy teams
 - **Player Statistics**: Real-time player data and performance tracking
+- **Matchup Visualization**: Compare team stats with color-coded performance indicators
+- **Power Index Tracking**: Track team performance over time with interactive charts
+- **Weekly Reports**: Generate and download comprehensive weekly performance reports
 - **Responsive Design**: User-friendly interface that works across devices
 
 ## Tech Stack
@@ -27,6 +30,7 @@ The MLB Fantasy Baseball Dashboard provides fantasy baseball managers with a com
 - React.js
 - React Router for navigation
 - Context API for state management
+- Chart.js for data visualization
 - CSS for styling
 
 ### Backend
@@ -116,26 +120,24 @@ YAHOO_CLIENT_SECRET=your_yahoo_client_secret
 ### Leagues
 - `GET /api/leagues`: Get user's fantasy leagues
 - `GET /api/leagues/:leagueId`: Get specific league details
+- `GET /api/leagues/:leagueId/powerindex`: Get power index data for teams in a league
 
 ### Teams
 - `GET /api/teams/:teamId`: Get team details
 - `GET /api/teams/:teamId/roster`: Get team roster
 - `GET /api/teams/:teamId/stats`: Get team statistics
 
-## Contribution Guidelines
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+### Reports
+- `GET /api/reports/weekly/:leagueId`: Get weekly report for a league
+- `GET /api/reports/weekly/:leagueId/download`: Download weekly report as PDF
 
 ## License
 
-[MIT License](LICENSE)
+MIT License
 
 ## Acknowledgements
 
 - [Yahoo Fantasy Sports API](https://developer.yahoo.com/fantasy/)
 - [React](https://reactjs.org/)
 - [Express](https://expressjs.com/)
+- [Chart.js](https://www.chartjs.org/)

@@ -193,33 +193,46 @@ exports.getUserLeagues = async (req, res) => {
   }
 };
 
-// Placeholder for getLeaguePowerIndex
+// Implement power index calculation
 exports.getLeaguePowerIndex = async (req, res) => {
   // Add logging at the very start of the function
   console.log(`DEBUG: Entered getLeaguePowerIndex controller for league ${req.params.leagueId}`);
   try {
+    const accessToken = req.accessToken;
     const { leagueId } = req.params;
-    const { week, year } = req.query; // Assuming week and year might be needed
+    const week = parseInt(req.query.week);
+    const year = parseInt(req.query.year || new Date().getFullYear());
+
+    if (!accessToken) {
+      return res.status(401).json({ message: 'Access token not available.' });
+    }
+
+    if (!week || isNaN(week)) {
+      return res.status(400).json({ message: 'Week parameter is required and must be a number.' });
+    }
 
     console.log(`DEBUG: Processing power index request for league ${leagueId}, week ${week}, year ${year}`);
-
-    // TODO: Implement the actual logic to calculate the power index.
-    // This might involve fetching scoreboard data, team stats, etc., from Yahoo
-    // and performing calculations.
-
-    // For now, return a placeholder response
-    res.json({
-      message: `Power index calculation for league ${leagueId}, week ${week} is not yet implemented.`,
-      leagueId,
-      week,
-      year,
-      powerIndexData: [] // Placeholder for actual data
-    });
+    
+    // Import the calculations utility
+    const { calculateAndStorePowerIndex } = require('../utils/calculations');
+    
+    // Use the calculateAndStorePowerIndex function to get/generate power index data
+    const weeklyStatsData = await calculateAndStorePowerIndex(accessToken, leagueId, week, year);
+    
+    // Return the calculated power index data
+    res.json(weeklyStatsData);
 
   } catch (err) {
-    console.error('Error in getLeaguePowerIndex (placeholder):', err.message);
+    console.error('Error in getLeaguePowerIndex:', err.message);
+    
+    // Handle token expiration
+    if (err.isTokenExpired || err.message.includes('401') || (err.response && err.response.status === 401)) {
+      return res.status(401).json({ message: 'Authentication error with Yahoo. Please login again.' });
+    }
+    
+    // Handle other errors
     if (!res.headersSent) {
-      res.status(500).send('Server Error: ' + err.message);
+      res.status(500).json({ message: 'Server Error: ' + err.message });
     }
   }
 };

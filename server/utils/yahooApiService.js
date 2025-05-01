@@ -29,7 +29,7 @@ const yahooApiService = {
       data: qs.stringify({
         client_id: CONSUMER_KEY,
         client_secret: CONSUMER_SECRET,
-        redirect_uri: 'oob', // Or your configured callback URL if not using 'oob'
+        redirect_uri: 'oob',
         code: authCode,
         grant_type: 'authorization_code',
       }),
@@ -104,8 +104,7 @@ const yahooApiService = {
       // Check content type and parse accordingly
       const contentType = response.headers['content-type'];
       if (contentType && contentType.includes('application/json')) {
-        console.log('API request successful (JSON response)'); // Debug log
-        return response.data; // Already JSON
+        return response.data;
       } else if (contentType && contentType.includes('application/xml')) {
         console.log('API request successful (XML response), parsing to JSON'); // Debug log
         
@@ -118,8 +117,6 @@ const yahooApiService = {
           try {
             console.warn(`XML response too large (${xmlSize} bytes) for direct parsing. Using streaming parser.`);
             return await processMatchupXml(response.data);
-            console.log('Matchup XML processed successfully');
-            console.log('See Again: ', response.data)
             return 
           } catch (matchupError) {
             console.error('Error using large size XML parser:', matchupError);
@@ -285,7 +282,6 @@ const yahooApiService = {
 async function processMatchupXml(xmlData) {
   // Create temp file
   const tempFile = path.join(os.tmpdir(), `yahoo_matchup_${Date.now()}.xml`);
-  console.log(`xmlData: `, xmlData); // Debug log
   try {
     // Write XML to temp file
     await fs.promises.writeFile(tempFile, xmlData, 'utf8');
@@ -428,9 +424,9 @@ async function processMatchupXml(xmlData) {
         if (currentTeam) currentTeam.points = item.$text;
       });
       // Add handler for projected points if needed, e.g.:
-      // parser.on('endElement: matchup > teams > team > team_projected_points > total', (item) => {
-      //   if (currentTeam) currentTeam.projected_points = item.$text;
-      // });
+      parser.on('endElement: matchup > teams > team > team_projected_points > total', (item) => {
+        if (currentTeam) currentTeam.projected_points = item.$text;
+      });
 
       // --- Stat Processing within Team --- 
       // Use a flag to know when we are inside the stats section of the correct team
@@ -481,17 +477,11 @@ async function processMatchupXml(xmlData) {
         } else {
             console.warn("Result structure missing expected matchup data for filtering.");
         }
-        // --- Filtering Logic End ---
-
-        // *** DEBUG: Log the final parsed and filtered result ***
-        console.log("Final parsed matchup data:", JSON.stringify(result, null, 2));
-
         // Clean up temp file
         fs.unlink(tempFile, (err) => {
           if (err) console.warn(`Warning: Could not delete temp file ${tempFile}:`, err);
           else console.log(`Temp file ${tempFile} deleted successfully`);
         });
-        console.log('See Again: ', result)
         resolve(result);
       });
 

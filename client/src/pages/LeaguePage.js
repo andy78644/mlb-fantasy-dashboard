@@ -1,13 +1,34 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import apiService from '../api/apiService';
-import './LeaguePage.css'; // We'll create this CSS file
+import './LeaguePage.css';
+import { Line } from 'react-chartjs-2';
+import { 
+  Chart as ChartJS, 
+  CategoryScale, 
+  LinearScale, 
+  PointElement, 
+  LineElement, 
+  Title, 
+  Tooltip, 
+  Legend 
+} from 'chart.js';
 
-// Define the STAT_DOC mapping with stat type (positive/negative/neutral)
-// Format matches the .env file structure
+// 註冊 Chart.js 組件
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
 const STAT_DOC = {
     "3": { name: "AVG", type: "positive" },
     "7": { name: "BB", type: "positive" },
+    "8": { name: "H", type: "positive" },
     "12": { name: "HR", type: "positive" },
     "16": { name: "SB", type: "positive" },
     "18": { name: "R", type: "positive" },
@@ -34,7 +55,9 @@ function LeaguePage() {
   const [rosterData, setRosterData] = useState([]);
   const [matchupData, setMatchupData] = useState(null); // This will hold the raw matchup data
   const [powerIndexData, setPowerIndexData] = useState([]);
+  const [powerIndexHistory, setPowerIndexHistory] = useState({}); // 存儲歷史 Power Index 數據
   const [loading, setLoading] = useState(true);
+  const [loadingHistory, setLoadingHistory] = useState(false); // 歷史數據加載狀態
   const [error, setError] = useState(null);
   const [selectedWeek, setSelectedWeek] = useState(null);
   const [currentWeek, setCurrentWeek] = useState(null);
@@ -252,6 +275,52 @@ function LeaguePage() {
     fetchPowerIndex();
   }, [leagueId, selectedWeek, selectedYear]);
 
+  // 獲取歷史 Power Index 數據
+  useEffect(() => {
+    const fetchPowerIndexHistory = async () => {
+      if (!leagueId || !leagueDetails || activeTab !== 'powerIndex') return;
+
+      setLoadingHistory(true);
+      setError(null);
+      try {
+        const startWeek = leagueDetails.startWeek || 1;
+        const maxWeek = Math.min(selectedWeek || currentWeek || 25, 25); // 最多到 Week 25
+        const historyData = {};
+        
+        // 為了顯示每支隊伍的所有週次數據，我們需要收集每週每隊的 Power Index
+        for (let week = startWeek; week <= maxWeek; week++) {
+          const response = await apiService.get(`/api/leagues/${leagueId}/powerindex?week=${week}&year=${selectedYear}`);
+          if (response.data && Array.isArray(response.data)) {
+            response.data.forEach(teamData => {
+              const teamName = teamData.team?.name;
+              if (teamName) {
+                if (!historyData[teamName]) {
+                  historyData[teamName] = {
+                    name: teamName,
+                    managerName: teamData.team?.managerName,
+                    data: Array(maxWeek).fill(null) // 初始化為 null
+                  };
+                }
+                // 週次從 1 開始，但數組從 0 開始
+                historyData[teamName].data[week-1] = teamData.powerIndex;
+              }
+            });
+          }
+        }
+        setPowerIndexHistory(historyData);
+      } catch (err) {
+        console.error("Error fetching power index history:", err);
+        setError(err.response?.data?.message || 'Failed to fetch power index history');
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+
+    if (activeTab === 'powerIndex') {
+      fetchPowerIndexHistory();
+    }
+  }, [leagueId, leagueDetails, activeTab, selectedYear, selectedWeek, currentWeek]);
+  
   const handleWeekChange = (e) => {
     const newWeek = parseInt(e.target.value);
     console.log("Week changed to:", newWeek);
@@ -537,7 +606,7 @@ function LeaguePage() {
     // Render a team card with modern styling
     const renderTeamCard = (team) => {
       // Define offense and defense stat IDs
-      const offenseStatIds = ["3", "7", "12", "16", "18", "13", "55", "60"];
+      const offenseStatIds = ["3", "7", "12", "16", "18", "13", "55", "60", "8"];
       const defenseStatIds = ["26", "27", "28", "32", "39", "42", "50", "83"];
       
       // Filter the team stats into categories
@@ -690,6 +759,140 @@ function LeaguePage() {
   };
 
 
+  // Render power index chart
+  const renderPowerIndexChart = () => {
+    if (loadingHistory) {
+      return <div className="loading-chart">加載歷史數據中...</div>;
+    }
+
+    if (!powerIndexHistory || Object.keys(powerIndexHistory).length === 0) {
+      return <div className="no-chart-data">沒有足夠的歷史數據來顯示圖表</div>;
+    }
+
+    const maxWeek = Math.min(selectedWeek || currentWeek || 25, 25);
+    const labels = Array.from({ length: maxWeek }, (_, i) => `週 ${i + 1}`);
+
+    // 為每個隊伍創建不同的顏色
+    const generateTeamColors = () => {
+      // 預定義的顏色列表
+      const colors = [
+        'rgba(255, 99, 132, 1)', // 紅色
+        'rgba(54, 162, 235, 1)', // 藍色
+        'rgba(255, 206, 86, 1)', // 黃色
+        'rgba(75, 192, 192, 1)', // 綠色
+        'rgba(153, 102, 255, 1)', // 紫色
+        'rgba(255, 159, 64, 1)', // 橙色
+        'rgba(199, 199, 199, 1)', // 灰色
+        'rgba(83, 102, 255, 1)', // 藍紫色
+        'rgba(0, 170, 160, 1)', // 青色
+        'rgba(255, 99, 255, 1)', // 粉紅色
+        'rgba(100, 140, 40, 1)' // 橄欖綠
+      ];
+      
+      return Object.keys(powerIndexHistory).reduce((acc, team, index) => {
+        acc[team] = colors[index % colors.length];
+        return acc;
+      }, {});
+    };
+
+    const teamColors = generateTeamColors();
+
+    // 獲取目前 Power Index 數據
+    const currentPowerIndex = {};
+    if (powerIndexData && Array.isArray(powerIndexData)) {
+      powerIndexData.forEach(entry => {
+        if (entry.team && entry.team.name) {
+          currentPowerIndex[entry.team.name] = {
+            powerIndex: entry.powerIndex,
+            managerName: entry.team.managerName
+          };
+        }
+      });
+    }
+
+    // 按當前 Power Index 排序隊伍
+    const sortedTeams = Object.keys(powerIndexHistory).map(teamName => ({
+      name: teamName,
+      managerName: powerIndexHistory[teamName].managerName,
+      color: teamColors[teamName],
+      powerIndex: currentPowerIndex[teamName]?.powerIndex || 0
+    })).sort((a, b) => b.powerIndex - a.powerIndex);
+
+    // 準備 Chart.js 數據結構
+    const chartData = {
+      labels,
+      datasets: Object.entries(powerIndexHistory).map(([teamName, teamData], index) => ({
+        label: teamName,
+        data: teamData.data,
+        borderColor: teamColors[teamName],
+        backgroundColor: teamColors[teamName].replace('1)', '0.2)'),
+        borderWidth: teamData.managerName === selectedManagerName ? 3 : 1, // 加粗選中的隊伍
+        pointRadius: teamData.managerName === selectedManagerName ? 5 : 3, // 增大選中隊伍的點大小
+        tension: 0.2
+      }))
+    };
+
+    const chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false, // 隱藏圖例，因為我們使用自定義的圖例列表
+        },
+        title: {
+          display: true,
+          text: '各隊 Power Index 週次變化',
+          font: {
+            size: 18
+          }
+        }
+      },
+      scales: {
+        y: {
+          title: {
+            display: true,
+            text: 'Power Index 值'
+          }
+        },
+        x: {
+          title: {
+            display: true,
+            text: '週次'
+          }
+        }
+      }
+    };
+
+    return (
+      <div className="power-index-chart">
+        <div className="chart-wrapper">
+          <div className="chart-container">
+            <Line data={chartData} options={chartOptions} />
+          </div>
+          <div className="team-ranking-legend">
+            <h3>目前 Power Index 排名</h3>
+            <div className="team-legend-items">
+              {sortedTeams.map((team, index) => (
+                <div 
+                  key={team.name} 
+                  className={`team-legend-item ${team.managerName === selectedManagerName ? 'selected-manager' : ''}`}
+                >
+                  <div className="team-rank">{index + 1}</div>
+                  <div 
+                    className="team-color-indicator" 
+                    style={{backgroundColor: team.color}}
+                  ></div>
+                  <div className="team-legend-name">{team.name}</div>
+                  <div className="team-legend-power-index">{team.powerIndex.toFixed(2)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Render power index content
   const renderPowerIndex = () => {
     // Add loading check if specific loading state exists
@@ -713,26 +916,28 @@ function LeaguePage() {
             </tr>
           </thead>
           <tbody>
-            {powerIndexData.map((teamStat, index) => (
-              <tr key={teamStat.team?.yahooTeamKey || index} className={teamStat.team?.managerName === selectedManagerName ? 'my-team-row' : ''}>
-                <td>{index + 1}</td>
-                <td>
-                  {teamStat.team?.teamLogoUrl ? (
+            {powerIndexData.map((teamStat, index) => {
+              // Create classes outside of JSX to avoid whitespace
+              const rowClass = teamStat.team?.managerName === selectedManagerName ? 'my-team-row' : '';
+              return (
+                <tr key={teamStat.team?.yahooTeamKey || index} className={rowClass}>
+                  <td>{index + 1}</td>
+                  <td>{teamStat.team?.teamLogoUrl ? (
                     <img
                       src={teamStat.team.teamLogoUrl}
                       alt="Team Logo"
                       className="team-small-logo"
-                       onError={(e) => { e.target.onerror = null; e.target.src='https://via.placeholder.com/30?text=Logo'; }} // Placeholder
+                      onError={(e) => { e.target.onerror = null; e.target.src='https://via.placeholder.com/30?text=Logo'; }}
                     />
                   ) : (
-                     <div className="team-small-logo-placeholder">?</div> // Placeholder div
-                  )}
-                </td>
-                <td>{teamStat.team?.name || 'N/A'}</td>
-                <td>{teamStat.team?.managerName || 'N/A'}</td>
-                <td className="power-index-value">{teamStat.powerIndex?.toFixed(2) || 'N/A'}</td> {/* Format PI */}
-              </tr>
-            ))}
+                    <div className="team-small-logo-placeholder">?</div>
+                  )}</td>
+                  <td>{teamStat.team?.name || 'N/A'}</td>
+                  <td>{teamStat.team?.managerName || 'N/A'}</td>
+                  <td className="power-index-value">{teamStat.powerIndex?.toFixed(2) || 'N/A'}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         <button
@@ -742,6 +947,9 @@ function LeaguePage() {
         >
           Download Week {selectedWeek} Report
         </button>
+        
+        {/* 添加 Power Index 折線圖 */}
+        {renderPowerIndexChart()}
       </div>
     );
   };
