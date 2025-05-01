@@ -12,6 +12,11 @@ The MLB Fantasy Baseball Dashboard provides fantasy baseball managers with a com
 - Analyze player data and matchups
 - Track weekly performance metrics with Power Index visualization
 
+![telegram-cloud-photo-size-5-6098229433308661131-y](https://github.com/user-attachments/assets/4ca12246-98cc-4bdb-a47c-b51b6847e21a)
+![telegram-cloud-photo-size-5-6098229433308661132-y](https://github.com/user-attachments/assets/8f04e1f0-5ff3-424c-bd98-a4d3d60dc196)
+
+
+
 ## Features
 
 - **Yahoo Fantasy API Integration**: Seamless connection to Yahoo's Fantasy Baseball platform
