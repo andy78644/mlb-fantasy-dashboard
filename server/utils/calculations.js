@@ -164,8 +164,11 @@ async function calculateAndStorePowerIndex(accessToken, leagueId, week, year) {
                 const currentStatValue = currentTeam.stats[statId];
                 const opponentStatValue = opponentTeam.stats[statId];
 
-                if (opponentStatValue === undefined || typeof currentStatValue !== 'number' || typeof opponentStatValue !== 'number') {
-                    continue;
+                if (opponentStatValue === undefined || typeof opponentStatValue !== 'number') {
+                    opponentStatValue = 0;
+                }
+                if (typeof currentStatValue !== 'number' || typeof currentStatValue !== 'number') {
+                    currentStatValue = 0;
                 }
 
                 const isNegativeStat = NEGATIVE_STAT_IDS.includes(statId);
